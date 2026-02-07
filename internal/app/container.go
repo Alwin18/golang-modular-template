@@ -36,3 +36,22 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		UserService: userService,
 	}, nil
 }
+
+// Cleanup closes all resources (database, redis, etc.)
+func (c *Container) Cleanup() {
+	c.Logger.Info("Starting cleanup...")
+
+	// Close database connection
+	if err := c.DB.Close(c.Logger); err != nil {
+		c.Logger.Error("Error closing database:", err)
+	}
+
+	// Close redis connection
+	if err := c.Redis.Close(); err != nil {
+		c.Logger.Error("Error closing redis:", err)
+	} else {
+		c.Logger.Info("Redis connection closed successfully")
+	}
+
+	c.Logger.Info("Cleanup completed")
+}

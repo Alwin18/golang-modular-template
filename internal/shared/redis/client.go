@@ -18,3 +18,8 @@ func New() *Client {
 	rdb.Ping(context.Background())
 	return &Client{rdb}
 }
+
+// Close closes the Redis connection
+func (c *Client) Close() error {
+	return c.Client.Close()
+}

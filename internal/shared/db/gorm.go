@@ -72,3 +72,20 @@ func NewPostgres(cfg *config.Config, log logger.Logger) (*DB, error) {
 
 	return &DB{Gorm: db}, nil
 }
+
+// Close closes the database connection
+func (d *DB) Close(log logger.Logger) error {
+	sqlDB, err := d.Gorm.DB()
+	if err != nil {
+		log.Error("Failed to get database instance:", err)
+		return err
+	}
+
+	if err := sqlDB.Close(); err != nil {
+		log.Error("Failed to close database connection:", err)
+		return err
+	}
+
+	log.Info("Database connection closed successfully")
+	return nil
+}
