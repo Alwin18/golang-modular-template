@@ -25,14 +25,16 @@ func (e *AppError) Unwrap() error {
 
 // Sentinel errors
 var (
-	ErrUnauthorized = &AppError{Code: http.StatusUnauthorized, Message: "unauthorized"}
-	ErrForbidden    = &AppError{Code: http.StatusForbidden, Message: "forbidden"}
-	ErrNotFound     = &AppError{Code: http.StatusNotFound, Message: "resource not found"}
-	ErrConflict     = &AppError{Code: http.StatusConflict, Message: "resource already exists"}
-	ErrValidation   = &AppError{Code: http.StatusUnprocessableEntity, Message: "validation error"}
-	ErrInternal     = &AppError{Code: http.StatusInternalServerError, Message: "internal server error"}
-	ErrBadRequest   = &AppError{Code: http.StatusBadRequest, Message: "bad request"}
-	ErrTooMany      = &AppError{Code: http.StatusTooManyRequests, Message: "too many requests"}
+	ErrUnauthorized    = &AppError{Code: http.StatusUnauthorized, Message: "unauthorized"}
+	ErrForbidden       = &AppError{Code: http.StatusForbidden, Message: "forbidden"}
+	ErrNotFound        = &AppError{Code: http.StatusNotFound, Message: "resource not found"}
+	ErrConflict        = &AppError{Code: http.StatusConflict, Message: "resource already exists"}
+	ErrValidation      = &AppError{Code: http.StatusUnprocessableEntity, Message: "validation error"}
+	ErrInternal        = &AppError{Code: http.StatusInternalServerError, Message: "internal server error"}
+	ErrBadRequest      = &AppError{Code: http.StatusBadRequest, Message: "bad request"}
+	ErrTooMany         = &AppError{Code: http.StatusTooManyRequests, Message: "too many requests"}
+	ErrInvalidPassword = &AppError{Code: http.StatusUnauthorized, Message: "invalid password"}
+	ErrInvalidUsername = &AppError{Code: http.StatusUnauthorized, Message: "invalid username"}
 )
 
 // New creates a new AppError.

@@ -11,9 +11,6 @@ import (
 func RegisterRoutes(router fiber.Router, h *Handler, cacheClient *cache.Cache, authMW fiber.Handler) {
 	auth := router.Group("/auth")
 
-	auth.Post("/register", middleware.RegisterRateLimit(cacheClient), h.Register)
 	auth.Post("/login", middleware.LoginRateLimit(cacheClient), h.Login)
-	auth.Post("/refresh", h.Refresh)
-	auth.Post("/logout", authMW, h.Logout)
-	auth.Get("/me", authMW, h.Me)
+
 }

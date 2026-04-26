@@ -13,7 +13,6 @@ import (
 
 	authModule "github.com/Alwin18/golang-module-template/internal/module/auth"
 	healthModule "github.com/Alwin18/golang-module-template/internal/module/health"
-	userModule "github.com/Alwin18/golang-module-template/internal/module/user"
 )
 
 // Deps holds the flat set of dependencies the router needs.
@@ -68,11 +67,6 @@ func (r *Router) RegisterRoutes() {
 	authHandler := authModule.NewHandler(authSvc)
 	authModule.RegisterRoutes(api, authHandler, r.deps.Cache, authMW)
 
-	// User
-	userRepo := userModule.NewRepository(r.deps.DB)
-	userSvc := userModule.NewService(userRepo)
-	userHandler := userModule.NewHandler(userSvc)
-	userModule.RegisterRoutes(api, userHandler, authMW)
 }
 
 // App returns the underlying Fiber app.
