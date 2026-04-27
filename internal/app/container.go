@@ -4,6 +4,8 @@ import (
 	"github.com/Alwin18/golang-module-template/config"
 	"github.com/Alwin18/golang-module-template/internal/shared/cache"
 	"github.com/Alwin18/golang-module-template/internal/shared/logger"
+	validation "github.com/Alwin18/golang-module-template/internal/shared/validations"
+	"github.com/go-playground/validator/v10"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -19,6 +21,7 @@ type Container struct {
 	Logger      *zap.Logger
 	AsynqClient *asynq.Client
 	AsynqServer *asynq.Server
+	Validator   *validator.Validate
 }
 
 // NewContainer creates and wires all dependencies.
@@ -44,6 +47,9 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 	// Init cache wrapper
 	cacheClient := cache.New(rdb)
 
+	// validator
+	validator := validation.NewValidator()
+
 	// Init Asynq
 	redisOpt := asynq.RedisClientOpt{
 		Addr: cfg.RedisHost + ":" + cfg.RedisPort,
@@ -61,6 +67,7 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		Logger:      log,
 		AsynqClient: asynqClient,
 		AsynqServer: asynqServer,
+		Validator:   validator,
 	}, nil
 }
 

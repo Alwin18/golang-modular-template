@@ -35,11 +35,12 @@ func New(cfg *config.Config) (*App, error) {
 func (a *App) Run() error {
 	// Pass a flat Deps struct — avoids importing internal/app inside internal/http
 	router := apphttp.NewRouter(&apphttp.Deps{
-		Config: a.container.Config,
-		DB:     a.container.DB,
-		Redis:  a.container.Redis,
-		Cache:  a.container.Cache,
-		Logger: a.container.Logger,
+		Config:    a.container.Config,
+		DB:        a.container.DB,
+		Redis:     a.container.Redis,
+		Cache:     a.container.Cache,
+		Logger:    a.container.Logger,
+		Validator: a.container.Validator,
 	})
 	router.RegisterRoutes()
 

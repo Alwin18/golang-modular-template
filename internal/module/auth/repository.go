@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"github.com/Alwin18/golang-module-template/internal/shared/constants"
 	"github.com/Alwin18/golang-module-template/internal/shared/db/models"
 	"gorm.io/gorm"
 )
@@ -18,16 +19,27 @@ func NewRepository(db *gorm.DB) *Repository {
 func (r *Repository) Login(username, password string) (models.User, error) {
 	var user models.User
 	if err := r.db.Preload("Role").Where("username = ?", username).First(&user).Error; err != nil {
-		return models.User{}, err
+		if err == gorm.ErrRecordNotFound {
+			return models.User{}, constants.ErrAccountNotFound
+		}
+		return models.User{}, constants.ErrInternalServer
 	}
 
 	return user, nil
 }
 
 func (r *Repository) SaveRefreshToken(rt *models.RefreshToken) error {
-	return r.db.Create(rt).Error
+	if err := r.db.Create(rt).Error; err != nil {
+		return constants.ErrInternalServer
+	}
+
+	return nil
 }
 
 func (r *Repository) DeleteRefreshToken(token string) error {
-	return r.db.Where("token = ?", token).Delete(&models.RefreshToken{}).Error
+	if err := r.db.Where("token = ?", token).Delete(&models.RefreshToken{}).Error; err != nil {
+		return constants.ErrInternalServer
+	}
+
+	return nil
 }

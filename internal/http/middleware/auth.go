@@ -3,45 +3,57 @@ package middleware
 import (
 	"strings"
 
-	response "github.com/Alwin18/golang-module-template/internal/shared/responses"
+	"github.com/Alwin18/golang-module-template/internal/shared/response"
 	"github.com/Alwin18/golang-module-template/internal/shared/security"
 	"github.com/gofiber/fiber/v2"
 )
 
 // Auth returns a JWT validation middleware.
 func Auth(jwtManager *security.JWTManager) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		authHeader := c.Get("Authorization")
+	return func(ctx *fiber.Ctx) error {
+		authHeader := ctx.Get("Authorization")
 		if authHeader == "" {
-			return response.Error(c, fiber.StatusUnauthorized, "authorization header required", nil)
+			return ctx.Status(fiber.StatusBadRequest).JSON(response.NewErrorResponse(response.ResponseError{
+				Message: "authorization header required",
+				Code:    fiber.StatusBadRequest,
+			}))
 		}
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
-			return response.Error(c, fiber.StatusUnauthorized, "invalid authorization header format", nil)
+			return ctx.Status(fiber.StatusUnauthorized).JSON(response.NewErrorResponse(response.ResponseError{
+				Message: "invalid authorization header format",
+				Code:    fiber.StatusUnauthorized,
+			}))
 		}
 
 		claims, err := jwtManager.ParseToken(parts[1])
 		if err != nil {
-			return response.Error(c, fiber.StatusUnauthorized, "invalid or expired token", nil)
+			return ctx.Status(fiber.StatusUnauthorized).JSON(response.NewErrorResponse(response.ResponseError{
+				Message: "invalid or expired token",
+				Code:    fiber.StatusUnauthorized,
+			}))
 		}
 
 		// Store claims in context locals
-		c.Locals("user_id", claims.UserID)
-		c.Locals("user_email", claims.Email)
-		c.Locals("user_role", claims.Role)
+		ctx.Locals("user_id", claims.UserID)
+		ctx.Locals("user_email", claims.Email)
+		ctx.Locals("user_role", claims.Role)
 
-		return c.Next()
+		return ctx.Next()
 	}
 }
 
 // RequireRole returns a middleware that enforces a specific role.
 func RequireRole(role string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		userRole, ok := c.Locals("user_role").(string)
+	return func(ctx *fiber.Ctx) error {
+		userRole, ok := ctx.Locals("user_role").(string)
 		if !ok || userRole != role {
-			return response.Error(c, fiber.StatusForbidden, "insufficient permissions", nil)
+			return ctx.Status(fiber.StatusForbidden).JSON(response.NewErrorResponse(response.ResponseError{
+				Message: "insufficient permissions",
+				Code:    fiber.StatusForbidden,
+			}))
 		}
-		return c.Next()
+		return ctx.Next()
 	}
 }

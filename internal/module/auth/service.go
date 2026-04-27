@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/Alwin18/golang-module-template/internal/shared/cache"
+	"github.com/Alwin18/golang-module-template/internal/shared/constants"
 	"github.com/Alwin18/golang-module-template/internal/shared/db/models"
-	apperrors "github.com/Alwin18/golang-module-template/internal/shared/errors"
 	"github.com/Alwin18/golang-module-template/internal/shared/security"
 )
 
@@ -30,17 +30,17 @@ func (s *Service) Login(req LoginRequest) (LoginResponse, error) {
 	}
 
 	if !security.CheckPassword(req.Password, user.Password) {
-		return LoginResponse{}, apperrors.ErrInvalidPassword
+		return LoginResponse{}, constants.ErrInvalidPassword
 	}
 
 	accessToken, err := s.jwtManager.GenerateAccessToken(user.ID, user.Email, user.Role.Name)
 	if err != nil {
-		return LoginResponse{}, apperrors.ErrInternal
+		return LoginResponse{}, constants.ErrInternalServer
 	}
 
 	refreshToken, expiresAt, err := s.jwtManager.GenerateRefreshToken(user.ID, user.Email, user.Role.Name)
 	if err != nil {
-		return LoginResponse{}, apperrors.ErrInternal
+		return LoginResponse{}, constants.ErrInternalServer
 	}
 
 	if err := s.repo.SaveRefreshToken(&models.RefreshToken{
@@ -48,7 +48,7 @@ func (s *Service) Login(req LoginRequest) (LoginResponse, error) {
 		Token:     refreshToken,
 		ExpiresAt: expiresAt,
 	}); err != nil {
-		return LoginResponse{}, apperrors.ErrInternal
+		return LoginResponse{}, constants.ErrInternalServer
 	}
 
 	// Cache user info

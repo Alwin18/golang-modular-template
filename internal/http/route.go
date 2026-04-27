@@ -5,6 +5,7 @@ import (
 	"github.com/Alwin18/golang-module-template/internal/http/middleware"
 	"github.com/Alwin18/golang-module-template/internal/shared/cache"
 	"github.com/Alwin18/golang-module-template/internal/shared/security"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/redis/go-redis/v9"
@@ -18,11 +19,12 @@ import (
 // Deps holds the flat set of dependencies the router needs.
 // This avoids importing internal/app and creating an import cycle.
 type Deps struct {
-	Config *config.Config
-	DB     *gorm.DB
-	Redis  *redis.Client
-	Cache  *cache.Cache
-	Logger *zap.Logger
+	Config    *config.Config
+	DB        *gorm.DB
+	Redis     *redis.Client
+	Cache     *cache.Cache
+	Logger    *zap.Logger
+	Validator *validator.Validate
 }
 
 // Router wraps Fiber and registers all routes.
@@ -64,7 +66,7 @@ func (r *Router) RegisterRoutes() {
 	// Auth
 	authRepo := authModule.NewRepository(r.deps.DB)
 	authSvc := authModule.NewService(authRepo, jwtManager, r.deps.Cache)
-	authHandler := authModule.NewHandler(authSvc)
+	authHandler := authModule.NewHandler(authSvc, r.deps.Validator)
 	authModule.RegisterRoutes(api, authHandler, r.deps.Cache, authMW)
 
 }

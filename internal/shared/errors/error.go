@@ -2,65 +2,161 @@ package errors
 
 import (
 	"errors"
-	"net/http"
+	"fmt"
+
+	"github.com/Alwin18/golang-module-template/internal/shared/constants"
+	"github.com/Alwin18/golang-module-template/internal/shared/response"
+	"github.com/gofiber/fiber/v2"
 )
 
-// AppError represents a structured application error.
+// AppError represents a structured application error with HTTP status code
 type AppError struct {
-	Code    int
-	Message string
-	Err     error
+	Code       string
+	Message    string
+	StatusCode int
+	Details    map[string]any
 }
 
 func (e *AppError) Error() string {
-	if e.Err != nil {
-		return e.Err.Error()
-	}
 	return e.Message
 }
 
-func (e *AppError) Unwrap() error {
-	return e.Err
+// Error mapping untuk standard errors dari constants package
+var errorStatusMap = map[error]int{
+	constants.ErrDataNotFound:              fiber.StatusNotFound,
+	constants.ErrAccountNotFound:           fiber.StatusNotFound,
+	constants.ErrAccountInactive:           fiber.StatusNotFound,
+	constants.ErrInvalidPassword:           fiber.StatusUnauthorized,
+	constants.ErrInvalidRequest:            fiber.StatusBadRequest,
+	constants.ErrNimAlreadyExists:          fiber.StatusConflict,
+	constants.ErrEmailAlreadyExists:        fiber.StatusConflict,
+	constants.ErrInternalServer:            fiber.StatusInternalServerError,
+	constants.ErrAccountNotFoundOrInactive: fiber.StatusNotFound,
 }
 
-// Sentinel errors
-var (
-	ErrUnauthorized    = &AppError{Code: http.StatusUnauthorized, Message: "unauthorized"}
-	ErrForbidden       = &AppError{Code: http.StatusForbidden, Message: "forbidden"}
-	ErrNotFound        = &AppError{Code: http.StatusNotFound, Message: "resource not found"}
-	ErrConflict        = &AppError{Code: http.StatusConflict, Message: "resource already exists"}
-	ErrValidation      = &AppError{Code: http.StatusUnprocessableEntity, Message: "validation error"}
-	ErrInternal        = &AppError{Code: http.StatusInternalServerError, Message: "internal server error"}
-	ErrBadRequest      = &AppError{Code: http.StatusBadRequest, Message: "bad request"}
-	ErrTooMany         = &AppError{Code: http.StatusTooManyRequests, Message: "too many requests"}
-	ErrInvalidPassword = &AppError{Code: http.StatusUnauthorized, Message: "invalid password"}
-	ErrInvalidUsername = &AppError{Code: http.StatusUnauthorized, Message: "invalid username"}
-)
-
-// New creates a new AppError.
-func New(code int, message string) *AppError {
-	return &AppError{Code: code, Message: message}
-}
-
-// Wrap wraps an underlying error with an AppError.
-func Wrap(appErr *AppError, err error) *AppError {
-	return &AppError{Code: appErr.Code, Message: appErr.Message, Err: err}
-}
-
-// IsNotFound checks if the error is a not-found error.
-func IsNotFound(err error) bool {
-	var appErr *AppError
-	if errors.As(err, &appErr) {
-		return appErr.Code == http.StatusNotFound
+// Constructors for AppError
+func NewNotFoundError(resource, identifier string) *AppError {
+	return &AppError{
+		Code:       "NOT_FOUND",
+		Message:    fmt.Sprintf("%s with %s not found", resource, identifier),
+		StatusCode: fiber.StatusNotFound,
 	}
-	return false
 }
 
-// IsConflict checks if the error is a conflict error.
-func IsConflict(err error) bool {
-	var appErr *AppError
-	if errors.As(err, &appErr) {
-		return appErr.Code == http.StatusConflict
+func NewValidationError(message string) *AppError {
+	return &AppError{
+		Code:       "VALIDATION_ERROR",
+		Message:    message,
+		StatusCode: fiber.StatusBadRequest,
 	}
-	return false
+}
+
+func NewUnauthorizedError(message string) *AppError {
+	return &AppError{
+		Code:       "UNAUTHORIZED",
+		Message:    message,
+		StatusCode: fiber.StatusUnauthorized,
+	}
+}
+
+func NewInternalError(message string) *AppError {
+	return &AppError{
+		Code:       "INTERNAL_ERROR",
+		Message:    message,
+		StatusCode: fiber.StatusInternalServerError,
+	}
+}
+
+func NewBadRequestError(message string) *AppError {
+	return &AppError{
+		Code:       "BAD_REQUEST",
+		Message:    message,
+		StatusCode: fiber.StatusBadRequest,
+	}
+}
+
+func NewForbiddenError(message string) *AppError {
+	return &AppError{
+		Code:       "FORBIDDEN",
+		Message:    message,
+		StatusCode: fiber.StatusForbidden,
+	}
+}
+
+func NewConflictError(message string) *AppError {
+	return &AppError{
+		Code:       "CONFLICT",
+		Message:    message,
+		StatusCode: fiber.StatusConflict,
+	}
+}
+
+// GetStatusCode returns the appropriate HTTP status code for an error
+// This function handles both AppError and standard errors from constants package
+func GetStatusCode(err error) int {
+	// Check if it's an AppError
+	if appErr, ok := err.(*AppError); ok {
+		return appErr.StatusCode
+	}
+
+	// Check if it's a known error from constants package
+	for knownErr, statusCode := range errorStatusMap {
+		if errors.Is(err, knownErr) {
+			return statusCode
+		}
+	}
+
+	// Fallback: check by error message for backward compatibility
+	errMsg := err.Error()
+	switch errMsg {
+	case "data tidak ditemukan",
+		"akun tidak ditemukan",
+		"akun tidak ditemukan atau tidak aktif",
+		"akun tidak aktif":
+		return fiber.StatusNotFound
+	case "password yang anda masukan salah":
+		return fiber.StatusUnauthorized
+	case "request tidak valid":
+		return fiber.StatusBadRequest
+	case "email anda sudah terdaftar",
+		"nim anda sudah terdaftar",
+		"data sudah ada":
+		return fiber.StatusConflict
+	case "terjadi kesalahan sistem":
+		return fiber.StatusInternalServerError
+	default:
+		return fiber.StatusInternalServerError
+	}
+}
+
+// HandleError is a global error handler for Fiber handlers
+// Usage in handler:
+//
+//	if err != nil {
+//	    return errors.HandleError(ctx, err)
+//	}
+func HandleError(ctx *fiber.Ctx, err error) error {
+	statusCode := GetStatusCode(err)
+
+	return ctx.Status(statusCode).JSON(response.NewErrorResponse(response.ResponseError{
+		Message: err.Error(),
+		Code:    statusCode,
+	}))
+}
+
+// HandleErrorWithDetails is similar to HandleError but allows adding custom error details
+func HandleErrorWithDetails(ctx *fiber.Ctx, err error, details []string) error {
+	statusCode := GetStatusCode(err)
+
+	return ctx.Status(statusCode).JSON(response.NewErrorResponse(response.ResponseError{
+		Message: err.Error(),
+		Code:    statusCode,
+		Errors:  details,
+	}))
+}
+
+// RegisterErrorMapping allows dynamic registration of new error-to-status mappings
+// This is useful for module-specific errors
+func RegisterErrorMapping(err error, statusCode int) {
+	errorStatusMap[err] = statusCode
 }

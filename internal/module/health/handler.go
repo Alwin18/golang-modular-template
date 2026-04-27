@@ -4,8 +4,7 @@ import (
 	"context"
 	"time"
 
-	response "github.com/Alwin18/golang-module-template/internal/shared/responses"
-
+	"github.com/Alwin18/golang-module-template/internal/shared/response"
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -23,17 +22,18 @@ func NewHandler(db *gorm.DB, redis *redis.Client) *Handler {
 }
 
 // Check performs a liveness check on DB and Redis.
-func (h *Handler) Check(c *fiber.Ctx) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+func (h *Handler) Check(ctx *fiber.Ctx) error {
+	// Use context from Fiber request
+	dbCtx, cancel := context.WithTimeout(ctx.UserContext(), 3*time.Second)
 	defer cancel()
 
 	dbStatus := "connected"
-	if sqlDB, err := h.db.DB(); err != nil || sqlDB.PingContext(ctx) != nil {
+	if sqlDB, err := h.db.DB(); err != nil || sqlDB.PingContext(dbCtx) != nil {
 		dbStatus = "disconnected"
 	}
 
 	redisStatus := "connected"
-	if err := h.redis.Ping(ctx).Err(); err != nil {
+	if err := h.redis.Ping(dbCtx).Err(); err != nil {
 		redisStatus = "disconnected"
 	}
 
@@ -42,11 +42,11 @@ func (h *Handler) Check(c *fiber.Ctx) error {
 		status = "degraded"
 	}
 
-	return response.Success(c, "health check", fiber.Map{
+	return ctx.Status(fiber.StatusOK).JSON(response.NewResponse(fiber.Map{
 		"status": status,
 		"db":     dbStatus,
 		"redis":  redisStatus,
-	})
+	}, "success login", fiber.StatusOK))
 }
 
 // RegisterRoutes registers health routes.

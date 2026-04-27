@@ -1,39 +1,47 @@
 package auth
 
 import (
-	apperrors "github.com/Alwin18/golang-module-template/internal/shared/errors"
+	"github.com/Alwin18/golang-module-template/internal/shared/errors"
+	"github.com/Alwin18/golang-module-template/internal/shared/response"
+	validation "github.com/Alwin18/golang-module-template/internal/shared/validations"
+	"github.com/go-playground/validator/v10"
 
-	response "github.com/Alwin18/golang-module-template/internal/shared/responses"
 	"github.com/gofiber/fiber/v2"
 )
 
 // Handler handles HTTP requests for the auth module.
 type Handler struct {
-	service *Service
+	service  *Service
+	validate *validator.Validate
 }
 
 // NewHandler creates a new auth Handler.
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, validate *validator.Validate) *Handler {
+	return &Handler{service: service, validate: validate}
 }
 
-func (h *Handler) Login(c *fiber.Ctx) error {
-	var req LoginRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.Error(c, fiber.StatusBadRequest, "invalid request body", nil)
+func (h *Handler) Login(ctx *fiber.Ctx) error {
+	var body LoginRequest
+	if err := ctx.BodyParser(&body); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(response.NewErrorResponse(response.ResponseError{
+			Message: err.Error(),
+			Code:    fiber.StatusBadRequest,
+		}))
 	}
 
-	resp, err := h.service.Login(req)
+	if err := h.validate.Struct(body); err != nil {
+		validationErrors := validation.FormatValidationErrors(err, body)
+		return ctx.Status(fiber.StatusBadRequest).JSON(response.NewErrorResponse(response.ResponseError{
+			Message: "body request tidak sesuai",
+			Code:    fiber.StatusBadRequest,
+			Errors:  validationErrors,
+		}))
+	}
+
+	resp, err := h.service.Login(body)
 	if err != nil {
-		return handleServiceError(c, err)
+		return errors.HandleError(ctx, err)
 	}
 
-	return response.Success(c, "login successful", resp)
-}
-
-func handleServiceError(c *fiber.Ctx, err error) error {
-	if appErr, ok := err.(*apperrors.AppError); ok {
-		return response.Error(c, appErr.Code, appErr.Message, nil)
-	}
-	return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	return ctx.Status(fiber.StatusOK).JSON(response.NewResponse(resp, "success login", fiber.StatusOK))
 }
