@@ -1,7 +1,5 @@
 package response
 
-import "math"
-
 type Meta struct {
 	Page      int   `json:"page" example:"1"`
 	PerPage   int   `json:"per_page" example:"10"`
@@ -63,12 +61,4 @@ func NewProcessResponse(message string, code int) ProcessResponse {
 		Message: message,
 		Code:    code,
 	}
-}
-
-func TotalPage(totalData int64, perPage int) int64 {
-	page := int64(math.Ceil(float64(totalData) / float64(perPage)))
-	if page == 0 {
-		return 1
-	}
-	return page
 }

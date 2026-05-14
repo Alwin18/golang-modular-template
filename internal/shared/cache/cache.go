@@ -53,13 +53,15 @@ func (c *Cache) Remember(ctx context.Context, key string, ttl time.Duration, fn 
 
 // Increment atomically increments a key value and sets TTL if new.
 func (c *Cache) Increment(ctx context.Context, key string, ttl time.Duration) (int64, error) {
-	pipe := c.client.TxPipeline()
-	incr := pipe.Incr(ctx, key)
-	pipe.Expire(ctx, key, ttl)
-	if _, err := pipe.Exec(ctx); err != nil {
+	count, err := c.client.Incr(ctx, key).Result()
+	if err != nil {
 		return 0, err
 	}
-	return incr.Val(), nil
+	// Only set TTL on first increment (when count becomes 1)
+	if count == 1 {
+		c.client.Expire(ctx, key, ttl)
+	}
+	return count, nil
 }
 
 // Client returns the underlying Redis client.

@@ -3,13 +3,14 @@ package middleware
 import (
 	"strings"
 
+	"github.com/Alwin18/golang-module-template/internal/shared/cache"
 	"github.com/Alwin18/golang-module-template/internal/shared/response"
 	"github.com/Alwin18/golang-module-template/internal/shared/security"
 	"github.com/gofiber/fiber/v2"
 )
 
 // Auth returns a JWT validation middleware.
-func Auth(jwtManager *security.JWTManager) fiber.Handler {
+func Auth(jwtManager *security.JWTManager, cacheClient *cache.Cache) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		authHeader := ctx.Get("Authorization")
 		if authHeader == "" {
@@ -31,6 +32,15 @@ func Auth(jwtManager *security.JWTManager) fiber.Handler {
 		if err != nil {
 			return ctx.Status(fiber.StatusUnauthorized).JSON(response.NewErrorResponse(response.ResponseError{
 				Message: "invalid or expired token",
+				Code:    fiber.StatusUnauthorized,
+			}))
+		}
+
+		_, err = cacheClient.Get(ctx.Context(), cache.BlacklistTokenKey(parts[1]))
+		if err == nil {
+			// Token found in blacklist
+			return ctx.Status(fiber.StatusUnauthorized).JSON(response.NewErrorResponse(response.ResponseError{
+				Message: "token has been revoked",
 				Code:    fiber.StatusUnauthorized,
 			}))
 		}

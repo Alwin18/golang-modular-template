@@ -14,6 +14,7 @@ import (
 
 	authModule "github.com/Alwin18/golang-module-template/internal/module/auth"
 	healthModule "github.com/Alwin18/golang-module-template/internal/module/health"
+	apperrors "github.com/Alwin18/golang-module-template/internal/shared/errors"
 )
 
 // Deps holds the flat set of dependencies the router needs.
@@ -43,7 +44,13 @@ func NewRouter(deps *Deps) *Router {
 	fiberApp.Use(middleware.Recover())
 	fiberApp.Use(middleware.Security())
 	fiberApp.Use(middleware.Logger(deps.Logger))
-	fiberApp.Use(cors.New())
+	fiberApp.Use(cors.New(cors.Config{
+		AllowOrigins:     deps.Config.CORSOrigins, // e.g. "https://app.example.com"
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
+		AllowCredentials: true,
+		MaxAge:           3600,
+	}))
 
 	return &Router{app: fiberApp, deps: deps}
 }
@@ -55,7 +62,7 @@ func (r *Router) RegisterRoutes() {
 		r.deps.Config.JWTAccessTokenTTL,
 		r.deps.Config.JWTRefreshTokenTTL,
 	)
-	authMW := middleware.Auth(jwtManager)
+	authMW := middleware.Auth(jwtManager, r.deps.Cache)
 
 	api := r.app.Group("/api/v1")
 
@@ -79,11 +86,19 @@ func (r *Router) App() *fiber.App {
 // defaultErrorHandler handles unhandled errors.
 func defaultErrorHandler(c *fiber.Ctx, err error) error {
 	code := fiber.StatusInternalServerError
+	message := "internal server error"
+
 	if e, ok := err.(*fiber.Error); ok {
 		code = e.Code
+		message = e.Message
 	}
+	if appErr, ok := err.(*apperrors.AppError); ok {
+		code = appErr.StatusCode
+		message = appErr.Message
+	}
+
 	return c.Status(code).JSON(fiber.Map{
 		"success": false,
-		"message": err.Error(),
+		"message": message,
 	})
 }

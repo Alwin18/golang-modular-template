@@ -2,8 +2,9 @@ package config
 
 // Config holds all application configuration.
 type Config struct {
-	AppPort string
-	AppEnv  string
+	AppPort     string
+	AppEnv      string
+	CORSOrigins string
 
 	DBHost string
 	DBPort string

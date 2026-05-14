@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+
 	"github.com/Alwin18/golang-module-template/internal/shared/constants"
 	"github.com/Alwin18/golang-module-template/internal/shared/db/models"
 	"gorm.io/gorm"
@@ -16,9 +18,9 @@ func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) Login(username, password string) (models.User, error) {
+func (r *Repository) Login(ctx context.Context, username string) (models.User, error) {
 	var user models.User
-	if err := r.db.Preload("Role").Where("username = ?", username).First(&user).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Role").Where("username = ?", username).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return models.User{}, constants.ErrAccountNotFound
 		}

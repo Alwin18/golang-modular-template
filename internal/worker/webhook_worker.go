@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/hibiken/asynq"
@@ -37,10 +39,26 @@ func NewWebhookWorker(logger *zap.Logger) *WebhookWorker {
 }
 
 // ProcessTask handles a webhook:send task.
-func (w *WebhookWorker) ProcessTask(_ context.Context, t *asynq.Task) error {
+func (w *WebhookWorker) ProcessTask(ctx context.Context, t *asynq.Task) error {
 	var payload WebhookPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 		return fmt.Errorf("unmarshal webhook payload: %w", asynq.SkipRetry)
+	}
+
+	parsed, err := url.Parse(payload.URL)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return fmt.Errorf("invalid webhook URL: %w", asynq.SkipRetry)
+	}
+
+	// Block private/internal IPs
+	ips, err := net.LookupIP(parsed.Hostname())
+	if err != nil {
+		return fmt.Errorf("dns lookup failed: %w", err)
+	}
+	for _, ip := range ips {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+			return fmt.Errorf("webhook to internal IP blocked: %w", asynq.SkipRetry)
+		}
 	}
 
 	body, err := json.Marshal(payload.Body)
@@ -53,7 +71,8 @@ func (w *WebhookWorker) ProcessTask(_ context.Context, t *asynq.Task) error {
 		method = http.MethodPost
 	}
 
-	req, err := http.NewRequest(method, payload.URL, bytes.NewBuffer(body))
+	// Use context for cancellation
+	req, err := http.NewRequestWithContext(ctx, method, payload.URL, bytes.NewBuffer(body))
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
 	}

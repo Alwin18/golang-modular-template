@@ -38,7 +38,7 @@ func (h *Handler) Login(ctx *fiber.Ctx) error {
 		}))
 	}
 
-	resp, err := h.service.Login(body)
+	resp, err := h.service.Login(ctx.UserContext(), body)
 	if err != nil {
 		return errors.HandleError(ctx, err)
 	}

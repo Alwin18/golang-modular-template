@@ -23,8 +23,8 @@ func NewService(repo *Repository, jwtManager *security.JWTManager, cacheClient *
 }
 
 // Login authenticates a user.
-func (s *Service) Login(req LoginRequest) (LoginResponse, error) {
-	user, err := s.repo.Login(req.Username, req.Password)
+func (s *Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, error) {
+	user, err := s.repo.Login(ctx, req.Username)
 	if err != nil {
 		return LoginResponse{}, err
 	}

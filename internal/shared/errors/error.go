@@ -94,39 +94,17 @@ func NewConflictError(message string) *AppError {
 // GetStatusCode returns the appropriate HTTP status code for an error
 // This function handles both AppError and standard errors from constants package
 func GetStatusCode(err error) int {
-	// Check if it's an AppError
 	if appErr, ok := err.(*AppError); ok {
 		return appErr.StatusCode
 	}
 
-	// Check if it's a known error from constants package
 	for knownErr, statusCode := range errorStatusMap {
 		if errors.Is(err, knownErr) {
 			return statusCode
 		}
 	}
 
-	// Fallback: check by error message for backward compatibility
-	errMsg := err.Error()
-	switch errMsg {
-	case "data tidak ditemukan",
-		"akun tidak ditemukan",
-		"akun tidak ditemukan atau tidak aktif",
-		"akun tidak aktif":
-		return fiber.StatusNotFound
-	case "password yang anda masukan salah":
-		return fiber.StatusUnauthorized
-	case "request tidak valid":
-		return fiber.StatusBadRequest
-	case "email anda sudah terdaftar",
-		"nim anda sudah terdaftar",
-		"data sudah ada":
-		return fiber.StatusConflict
-	case "terjadi kesalahan sistem":
-		return fiber.StatusInternalServerError
-	default:
-		return fiber.StatusInternalServerError
-	}
+	return fiber.StatusInternalServerError
 }
 
 // HandleError is a global error handler for Fiber handlers
